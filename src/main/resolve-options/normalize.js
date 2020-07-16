@@ -1,3 +1,4 @@
+const fs = require("fs");
 const _get = require("lodash/get");
 const _has = require("lodash/has");
 const enhancedResolve = require("enhanced-resolve");
@@ -5,7 +6,7 @@ const PnpWebpackPlugin = require("pnp-webpack-plugin");
 const TsConfigPathsPlugin = require("tsconfig-paths-webpack-plugin");
 const transpileMeta = require("../../extract/transpile/meta");
 
-const CACHE_DURATION = 4000;
+const CACHE_DURATION = 1000;
 const DEFAULT_RESOLVE_OPTIONS = {
   // for later: check semantics of enhanced-resolve symlinks and
   // node's preserveSymlinks. They seem to be
@@ -27,22 +28,24 @@ const DEFAULT_RESOLVE_OPTIONS = {
   // - an explicit inclusion of node_modules/@types to the spots
   //   to look for modules (in addition to "node_modules" which
   //   is the default for enhanced-resolve)
-  modules: ["node_modules", "node_modules/@types"],
+  modules: ["node_modules", "node_modules/@types"]
 };
 
+const cachedFilesystem = new enhancedResolve.CachedInputFileSystem(
+  fs,
+  CACHE_DURATION
+);
 const NON_OVERRIDABLE_RESOLVE_OPTIONS = {
   // This should cover most of the bases of dependency-cruiser's
   // uses. Not overridable for now because for other
   // file systems it's not sure we can use sync system calls
   // Also: passing a non-cached filesystem makes performance
   // worse.
-  fileSystem: new enhancedResolve.CachedInputFileSystem(
-    new enhancedResolve.NodeJsInputFileSystem(),
-    CACHE_DURATION
-  ),
+  fileSystem: cachedFilesystem,
+  purge: () => cachedFilesystem.purge(),
   // our code depends on sync behavior, so having this
   // overriden is not an option
-  useSyncFileSystemCalls: true,
+  useSyncFileSystemCalls: true
 };
 
 function pushPlugin(pPlugins, pPluginToPush) {
@@ -68,7 +71,7 @@ function compileResolveOptions(pResolveOptions, pTSConfig) {
         // so we do it ourselves - either with the extensions passed
         // or with the supported ones.
         extensions:
-          pResolveOptions.extensions || DEFAULT_RESOLVE_OPTIONS.extensions,
+          pResolveOptions.extensions || DEFAULT_RESOLVE_OPTIONS.extensions
       })
     );
   }
@@ -84,7 +87,7 @@ function compileResolveOptions(pResolveOptions, pTSConfig) {
     ...DEFAULT_RESOLVE_OPTIONS,
     ...lResolveOptions,
     ...pResolveOptions,
-    ...NON_OVERRIDABLE_RESOLVE_OPTIONS,
+    ...NON_OVERRIDABLE_RESOLVE_OPTIONS
   };
 }
 
@@ -108,7 +111,7 @@ module.exports = (pResolveOptions, pOptions, pTSConfig) =>
       externalModuleResolutionStrategy:
         pOptions.externalModuleResolutionStrategy,
       combinedDependencies: pOptions.combinedDependencies,
-      ...(pResolveOptions || {}),
+      ...(pResolveOptions || {})
     },
     pTSConfig || {}
   );
